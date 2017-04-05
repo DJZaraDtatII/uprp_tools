@@ -1,0 +1,189 @@
+#!/bin/bash
+
+#------------------------------------------------------------------------------------------------------
+# Credit to: xpirt - luxi78 - howellzhu - cofface - ASdev - XDA - Superr - dan semua yang berkontribusi 
+#------------------------------------------------------------------------------------------------------
+# Provided by: rendiix
+
+banner() {
+	echo "$clears"
+	echo ""
+	echo "------------------------------------------------------"
+	echo "$bold$blueb                   Repack Tools                      $normal"
+	echo "$italic$blueb                  by Gunkid Dev                      $normal"
+	echo "------------------------------------------------------"
+	echo ""
+	if [[ -d "./system" ]]; then
+		param
+	fi
+	echo ""
+}
+redt=$(tput setaf 1)
+redb=$(tput setab 1)
+greent=$(tput setaf 2)
+greenb=$(tput setab 2)
+yellowt=$(tput setaf 3)
+yellowb=$(tput setab 3)
+bluet=$(tput setaf 4)
+blueb=$(tput setab 4)
+magentat=$(tput setaf 5)
+magentab=$(tput setab 5)
+cyant=$(tput setaf 6)
+cyanb=$(tput setab 6)
+whiteb=$(tput setab 7)
+bold=$(tput bold)
+italic=$(tput sitm)
+stand=$(tput smso)
+underline=$(tput smul)
+normal=$(tput sgr0)
+clears=$(tput clear)
+myuser=$(echo "$(whoami | gawk '{ print $1 }')")
+api=$(grep "ro.build.version.sdk" ./system/build.prop | cut -d"=" -f2)
+versi=$(grep "ro.build.version.release" ./system/build.prop | cut -d"=" -f2)
+if [[ $api = "21" ]]; then
+	alias="Lollipop 5.0"
+elif [[ $api = "22" ]]; then
+	alias="Lollipop 5.1"
+elif [[ $api = "23" ]]; then
+	alias="Marshmallow"
+elif [[ $api = "24" ]]; then
+	alias="Nougat"
+fi
+
+selesai() {
+echo "------------------------------------------------------"
+echo "${greent}Selesai...$normal"
+echo "------------------------------------------------------"
+}
+param() {
+echo "Informasi system:"
+echo "- Android:$bold${greent}$alias$normal "
+echo "- Rilis:$bold${greent}$versi$normal "
+echo "- API:$bold${greent}$api$normal "
+echo ""
+echo "------------------------------------------------------"
+}
+android7() {
+banner
+if [[ -f "./file_contexts.bin" ]]; then
+ echo "file_contexts.bin androin 7.xx terdeteksi!"
+ echo "Mengkonversi..."
+ fi
+./alat/sefcontext -o file_contexts file_contexts.bin
+}
+bongkar() {
+FILE="./system.transfer.list ./system.new.dat"
+banner
+echo "------------------------------------------------------"
+echo "${yellowt}Konvert ke system.img...$normal"
+echo "------------------------------------------------------"
+( ./alat/sdat2img.py ./system.transfer.list ./system.new.dat ./system.img ) >/dev/null
+mkdir sementara
+sudo mount -t ext4 -o loop system.img sementara/
+banner
+echo "------------------------------------------------------"
+echo "${yellowt}Konvert ke system folder...$normal"
+echo "------------------------------------------------------"
+mkdir system
+sudo cp -R ./sementara/. ./system/.
+sudo chown -hR $myuser:$myuser ./system
+sudo chmod -R a+rwX ./system
+sudo chown -hR $myuser:$myuser ./sementara
+sudo umount ./sementara
+rm -r ./sementara
+rm ./system.img
+selesai
+}
+pack() {
+banner
+read -p "Massukkan ukuran system (Mb): " ukuran
+./alat/make_ext4fs -T -0 -S file_contexts -L system -l ${ukuran}M -a system system.img system/
+mkdir Packed
+mv ./system.img ./Packed/system.img
+cd Packed
+../alat/img2simg system.img system_new.img 4096
+banner
+echo "------------------------------------------------------"
+echo "${yellowt}Konvert ke SDAT, silahkan tunggu...$normal"
+echo ""
+echo "------------------------------------------------------"
+		if [[ $api = "21" ]]; then
+			jawab="1"
+		elif [[ $api = "22" ]]; then
+			jawab="2"
+		elif [[ $api = "23" ]]; then
+			jawab="3"
+		elif [[ $api = "24" ]]; then
+			jawab="4"
+		fi
+		( ../alat/img2sdat.py system_new.img ../Packed $jawab 2>&1 ) >/dev/null
+rm system.img
+rm system_new.img
+selesai
+}
+clear
+banner
+PS3='Masukkan pilihan: '
+options=("Bongkar DAT" "Repack DAT" "${redt}Keluar$normal")
+select opt in "${options[@]}";
+do
+	case $opt in
+		"Bongkar DAT")
+			banner
+			echo "Memeriksa file..."
+				if [[ -d "./system" ]]; then
+					echo "${yellowt}Menghapus proyek lama...$normal"
+					rm -rf ./system
+				fi
+			echo "Masukkan ${greent}system.new.dat$normal, ${greent}system.transfer.list$normal kedalam folder dan tekan enter "
+			read -p "$t_enter_continue"
+			if [[ ! -f "./system.new.dat" || ! -f "./system.transfer.list" ]]; then
+				echo ""
+				echo "${redt}Kesalahan!${normal} File tidak lengkap."
+				echo ""
+				echo "------------------------------------------------------"
+				echo "Pastikan file yang dibutuhkan lengkap dan coba lagi.";
+				echo "------------------------------------------------------"
+				echo ""
+			else bongkar
+			exec ./gunkid
+			fi
+			;;
+		"Repack DAT")
+			banner
+			if [[ ! -d "./system" ]]; then
+				exec ./gunkid
+			fi
+			echo "Memeriksa file..."
+				if [[ -d "./Packed" ]]; then
+					echo "${yellowt}Menghapus proyek lama...$normal"
+					rm -rf ./Packed
+				fi
+			banner
+			android7
+			echo "Masukkan ${greent}file_contexts${normal} atau ${greent}file_contexts.bin${normal} kedalam folder... "
+			echo ""
+			echo ""
+			if [[ ! -f "./file_contexts" ]]; then
+				echo ""
+				echo "${redt}Kesalahan!${normal} Tidak dapat melanjutkan."
+				echo ""
+				echo "------------------------------------------------------"
+				echo "${redt}file_contexts atau file_contexts.bin tidak ada!${normal} Pastikan file yang dibutuhkan lengkap dan coba lagi.";
+				echo "------------------------------------------------------"
+				echo ""
+			else pack
+			exit
+			fi
+			;;
+		"${redt}Keluar$normal")
+			banner
+			echo "Tekan ENTER untuk keluar. Terima Kasih..."
+			read -p "$t_enter_continue"
+			banner
+			exit
+			;;
+		*) echo ${redt}Pilihan salah$normal
+		;;
+	esac
+done
